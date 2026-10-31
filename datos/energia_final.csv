@@ -1,0 +1,4 @@
+particula,K_sim_MeV,K_teorica_MeV,error_pct,vueltas,fc_MHz
+Protón,11.9775,11.9735,0.0327,119.5,15.2452
+Deuterón,5.9830,5.9897,-0.1120,59.5,7.6264
+Partícula alfa,12.0639,12.0561,0.0645,60,7.6752

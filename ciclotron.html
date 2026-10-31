@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ciclotrón virtual 3D</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #05070d; color: #dfe8f5; font: 14px system-ui, sans-serif; overflow: hidden; }
+  canvas { display: block; }
+  #panel { position: absolute; top: 12px; left: 12px; background: rgba(10,16,30,.78); border: 1px solid #25324d; border-radius: 8px; padding: 10px 14px; min-width: 230px;
+           box-sizing: border-box; max-height: calc(100vh - 24px); overflow-y: auto; overscroll-behavior: contain;
+           scrollbar-width: thin; scrollbar-color: #2d3d63 transparent; }
+  #panel::-webkit-scrollbar { width: 8px; }
+  #panel::-webkit-scrollbar-thumb { background: #2d3d63; border-radius: 4px; }
+  #panel::-webkit-scrollbar-track { background: transparent; }
+  #panel h1 { font-size: 15px; margin: 0 0 8px; }
+  #panel div.row { display: flex; justify-content: space-between; gap: 14px; margin: 2px 0; }
+  #panel b { font-variant-numeric: tabular-nums; }
+  #ctrl { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  button, select { background: #16213a; color: #dfe8f5; border: 1px solid #2d3d63; border-radius: 6px; padding: 4px 9px; font: inherit; cursor: pointer; }
+  button:hover { background: #1f2f52; }
+  #estado { margin-top: 6px; font-weight: 600; max-width: 270px; }
+  .sl { display: block; width: 100%; font-size: 13px; }
+  .sl input { width: 100%; margin: 2px 0 4px; }
+  #ctrl { width: 270px; }
+  #nota { margin-top: 6px; font-size: 12px; line-height: 1.35; opacity: .8; max-width: 270px; }
+  #nota:empty { display: none; }
+  .aviso { color: #ff8a65; }
+</style>
+</head>
+<body>
+<div id="panel">
+  <h1>Ciclotrón virtual 3D</h1>
+  <div class="row"><span>Partícula</span><b id="p-nombre">-</b></div>
+  <div class="row"><span>Energía K</span><b id="p-K">-</b></div>
+  <div class="row"><span>Radio de giro</span><b id="p-r">-</b></div>
+  <div class="row"><span>Vueltas</span><b id="p-vueltas">-</b></div>
+  <div class="row"><span>v / c</span><b id="p-beta">-</b></div>
+  <div class="row"><span>γ (masa relativista)</span><b id="p-gamma">-</b></div>
+  <div class="row"><span>f_c (actual)</span><b id="p-fc">-</b></div>
+  <div class="row"><span>f_E</span><b id="p-fe">-</b></div>
+  <div class="row"><span>K máx teórica</span><b id="p-kmax">-</b></div>
+  <div class="row"><span>Campo B</span><b id="p-Bvec">-</b></div>
+  <div class="row"><span>Sentido de giro</span><b id="p-giro">-</b></div>
+  <div id="filasCarga" style="display:none">
+    <div class="row"><span>Distancia a la carga</span><b id="p-dist">-</b></div>
+    <div class="row"><span>Fuerza de Coulomb</span><b id="p-fq">-</b></div>
+  </div>
+  <div id="estado"></div>
+  <div id="nota"></div>
+  <div id="ayudaCarga" style="display:none;font-size:12px;opacity:.7;margin-top:4px">Arrastra la esfera (carga externa) con el mouse.</div>
+  <div id="ctrl">
+    <select id="sel"><option value="proton">Protón</option><option value="deuteron">Deuterón</option><option value="alpha">Partícula alfa</option><option value="electron">Electrón</option></select>
+    <button id="b-reset">Reiniciar</button>
+    <button id="b-pausa">Pausa</button>
+    <button id="b-top">Vista superior</button>
+    <button id="b-lado">Vista lateral</button>
+    <button id="b-bloom">Brillo: sí</button>
+    <button id="b-sigue">Seguir partícula: no</button>
+    <button id="b-zoom" title="Ajusta la distancia de la cámara al tamaño de la órbita">Zoom automático: no</button>
+    <select id="din" title="Física que usa la simulación. El electrón necesita la relativista."><option value="clasica">Dinámica clásica</option><option value="rel">Dinámica relativista</option></select>
+    <select id="modo" title="Forma del campo E"><option value="ideal">Campo ideal</option><option value="sine">Campo sinusoidal</option></select>
+    <select id="inj" title="Dónde nace la partícula"><option value="center">Inyección al centro</option><option value="dee">Inyección en la D (la fase importa)</option></select>
+    <select id="bdir" title="Dirección del campo magnético B"><option value="+z">B hacia +z (arriba)</option><option value="-z">B hacia −z (abajo)</option><option value="+x">B hacia +x</option><option value="-x">B hacia −x</option><option value="+y">B hacia +y</option><option value="-y">B hacia −y</option><option value="custom">B inclinado (elegir ángulos)</option></select>
+    <div id="grupoB" style="display:none;width:100%">
+      <label class="sl">Inclinación θ (desde +z): <b id="v-th">10</b>° <input id="s-th" type="range" min="0" max="180" step="1" value="10"></label>
+      <label class="sl">Azimut φ (en el plano xy): <b id="v-ph">0</b>° <input id="s-ph" type="range" min="0" max="355" step="5" value="0"></label>
+    </div>
+    <label class="sl">Campo B: <b id="v-B">1.00</b> T <input id="s-B" type="range" min="0.5" max="2" step="0.05" value="1"></label>
+    <label class="sl">Energía de inyección K₀: <b id="v-K0">1 keV</b> <input id="s-K0" type="range" min="0" max="4" step="0.01" value="0"></label>
+    <label class="sl">Voltaje V: <b id="v-V">50</b> kV <input id="s-V" type="range" min="5" max="100" step="5" value="50"></label>
+    <label class="sl" title="Frecuencia del campo E respecto a f_c (en modo relativista, f_c con la masa a la energía de inyección)">f_E / f_c: <b id="v-fe">1.0000</b> <input id="s-fe" type="range" min="0.98" max="1.02" step="0.0005" value="1"></label>
+    <label class="sl" title="φ = 0.5π es la fase buena para cualquier partícula (para q < 0 la simulación invierte la polaridad)">Fase φ: <b id="v-phi">0.50</b> π <input id="s-phi" type="range" min="0" max="2" step="0.05" value="0.5"></label>
+    <button id="b-carga">Agregar carga externa</button>
+    <div id="grupoCarga" style="display:none;width:100%">
+      <select id="blind" title="¿Las D (metal) blindan el campo de la carga externa?"><option value="no">Sin blindaje de las D</option><option value="si">Con blindaje de las D</option></select>
+      <label class="sl">Carga externa Q: <b id="v-Q">300</b> nC <input id="s-Q" type="range" min="-1000" max="1000" step="10" value="300"></label>
+    </div>
+    <label class="sl">Velocidad: <b id="v-vel">4</b> vueltas/s <input id="vel" type="range" min="0.5" max="30" step="0.5" value="4"></label>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+<script src="cyclotron_physics.js"></script>
+<script>
+(function () {
+  'use strict';
+  const CP = window.CyclotronPhysics;
+  const e = CP.E_CHARGE;
+  const GAP = 0.01, R = 0.5, HALF_H = 0.05;       // altura de las D = 0.1 m (1 u de escena)
+  const S = 10;                                   // 1 m de física = 10 unidades de escena
+  const MAX_PTS = 150000, PTS_POR_VUELTA = 120;   // estela: puntos por vuelta y tope
+
+  // ---------- escena ----------
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  document.body.appendChild(renderer.domElement);
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x05070d);
+  const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.02, 200);
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  function vista(pos) { camera.position.set(...pos); controls.target.set(0, 0, 0); controls.update(); }
+  vista([0, -9, 9]);
+  const composer = new THREE.EffectComposer(renderer);
+  composer.addPass(new THREE.RenderPass(scene, camera));
+  const bloom = new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.9, 0.6, 0.15);
+  composer.addPass(bloom);
+  let usarBloom = true, siguiendo = false;
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+  const luz = new THREE.DirectionalLight(0xffffff, 0.6); luz.position.set(3, -5, 10); scene.add(luz);
+
+  // D's: medios cilindros con eje z (altura 1 u), a ±gap/2 del centro
+  const hg = (GAP / 2) * S, alto = 1.0;
+  function crearD(lado) {
+    const geo = new THREE.CylinderGeometry(R * S, R * S, alto, 64, 1, true, lado > 0 ? 0 : Math.PI, Math.PI);
+    geo.rotateX(Math.PI / 2);
+    const mat = new THREE.MeshPhongMaterial({ color: 0x5b8def, transparent: true, opacity: 0.18, side: THREE.DoubleSide });
+    const m = new THREE.Mesh(geo, mat); m.position.x = lado * hg; scene.add(m);
+    const borde = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 30), new THREE.LineBasicMaterial({ color: 0x7aa2ff, transparent: true, opacity: 0.5 }));
+    borde.position.x = lado * hg; scene.add(borde);
+  }
+  crearD(1); crearD(-1);
+
+  // hueco: plano que cambia de color con el signo de E
+  const hueco = new THREE.Mesh(new THREE.PlaneGeometry(GAP * S, 2 * R * S),
+    new THREE.MeshBasicMaterial({ color: 0xffcc33, transparent: true, opacity: 0.5, side: THREE.DoubleSide }));
+  scene.add(hueco);
+
+  // flechas de B en una grilla (apuntan en la dirección elegida)
+  const flechas = new THREE.Group();
+  for (let i = -3; i <= 3; i++) for (let j = -3; j <= 3; j++) {
+    if (Math.hypot(i, j) > 3.4) continue;
+    const a = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THREE.Vector3(), 0.9, 0x3a4a73, 0.25, 0.14);
+    a.userData.centro = new THREE.Vector3(i * 1.4, j * 1.4, -0.45);
+    flechas.add(a);
+  }
+  scene.add(flechas);
+  function orientarFlechas(b) {
+    const d = new THREE.Vector3(b[0], b[1], b[2]).normalize();
+    flechas.children.forEach((a) => { a.setDirection(d); a.position.copy(a.userData.centro).addScaledVector(d, -0.45); });
+  }
+  orientarFlechas([0, 0, 1]);
+
+  // partícula + estela
+  const bola = new THREE.Mesh(new THREE.SphereGeometry(0.13, 20, 20), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+  scene.add(bola);
+  let qx = 0.75, qy = 0;                           // posición de la carga externa (m)
+  const carga = new THREE.Mesh(new THREE.SphereGeometry(0.22, 24, 24), new THREE.MeshBasicMaterial({ color: 0x888888 }));
+  carga.position.set(qx * S, qy * S, 0); carga.visible = false; scene.add(carga);
+  let hayCarga = false;                            // la carga es opcional: empieza sin ella
+  const Qef = () => (hayCarga ? +$('s-Q').value * 1e-9 : 0);   // carga efectiva (C) que ve la física
+  const linea = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]),
+    new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 }));
+  linea.frustumCulled = false; linea.visible = false; scene.add(linea);
+  const posArr = new Float32Array(MAX_PTS * 3), colArr = new Float32Array(MAX_PTS * 3);
+  const estelaGeo = new THREE.BufferGeometry();
+  estelaGeo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
+  estelaGeo.setAttribute('color', new THREE.BufferAttribute(colArr, 3));
+  estelaGeo.setDrawRange(0, 0);
+  const estela = new THREE.Line(estelaGeo, new THREE.LineBasicMaterial({ vertexColors: true }));
+  estela.frustumCulled = false;
+  scene.add(estela);
+
+  // ---------- simulación ----------
+  let sim = null, pt = null, kth = 0, kcol = 1, K0 = 0, relat = false, claveAct = 'proton', nPts = 0, pausado = false, detenido = false;
+  let zoomAuto = false, ext = 0.3;               // zoom automático: tamaño máximo visto de la trayectoria (u de escena)
+  let B = 1, V = 50e3, tUltimo = 0, tObjetivo = 0, Tc = 1, maxV = 200;
+  const $ = (id) => document.getElementById(id);
+
+  function colorEnergia(f) {                      // azul (lento) -> rojo (rápido)
+    const c = new THREE.Color().setHSL(0.66 * (1 - Math.min(Math.max(f, 0), 1)), 1, 0.55);
+    return c;
+  }
+  const fmtE = (K) => { const keV = K / e / 1e3; return keV < 100 ? keV.toFixed(1) + ' keV' : (keV / 1e3).toFixed(3) + ' MeV'; };
+  const fmtF = (f) => f >= 1e9 ? (f / 1e9).toFixed(3) + ' GHz' : (f / 1e6).toFixed(3) + ' MHz';
+  const fmtL = (r) => r < 0.01 ? (r * 1e3).toFixed(2) + ' mm' : (r * 100).toFixed(1) + ' cm';
+  function leerB() {                              // dirección de B elegida (vector unitario)
+    const v = $('bdir').value;
+    if (v === 'custom') {
+      const th = +$('s-th').value * Math.PI / 180, ph = +$('s-ph').value * Math.PI / 180;
+      return [Math.sin(th) * Math.cos(ph), Math.sin(th) * Math.sin(ph), Math.cos(th)];
+    }
+    return { '+z': [0, 0, 1], '-z': [0, 0, -1], '+x': [1, 0, 0], '-x': [-1, 0, 0], '+y': [0, 1, 0], '-y': [0, -1, 0] }[v];
+  }
+  function iniciar(clave) {
+    pt = CP.PARTICLES[clave]; claveAct = clave;
+    B = +$('s-B').value; V = +$('s-V').value * 1e3;
+    etiquetas();
+    const enD = $('inj').value === 'dee';
+    relat = $('din').value === 'rel';
+    const bd = leerB();
+    K0 = Math.pow(10, +$('s-K0').value) * 1e3 * e;
+    const g0 = relat ? CP.theory.gamma(pt.m, K0) : 1;
+    const fc0 = CP.theory.frequency(pt.q, pt.m, B) / g0;   // f_c a la energía de inyección
+    sim = CP.createCyclotron({
+      q: pt.q, m: pt.m, B, Bdir: bd, V, gap: GAP, R,
+      fE: fc0 * +$('s-fe').value, phase: +$('s-phi').value * Math.PI,
+      mode: $('modo').value, inject: enD ? 'dee' : 'center', K0,
+      relativistic: relat, halfHeight: HALF_H,
+      Q: Qef(), qx, qy, shield: $('blind').value === 'si',
+    });
+    orientarFlechas(bd);
+    kth = relat ? CP.theory.kineticMaxRel(pt.q, pt.m, B, R) : CP.theory.kineticMax(pt.q, pt.m, B, R);
+    kcol = clave === 'electron' ? 3 * K0 : kth;            // escala de color: el electrón nunca llega a su K máx, se compara con K₀
+    maxV = clave === 'electron' ? 300 : Math.ceil(1.5 * kth / (2 * Math.abs(pt.q) * V)) + 20;   // vueltas esperadas con margen
+    nPts = 0; tUltimo = 0; tObjetivo = 0; Tc = g0 / sim.fc; detenido = false; estelaGeo.setDrawRange(0, 0); ext = 0.3;
+    $('p-nombre').textContent = pt.name;
+    $('p-fe').textContent = fmtF(sim.params.fE);
+    $('p-kmax').textContent = (kth / e / 1e6).toFixed(2) + ' MeV';
+    $('p-Bvec').textContent = '(' + bd.map((c) => (c * B + 0).toFixed(2)).join(', ') + ') T';
+    const bz = bd[2], enPlano = Math.abs(bz) > 1 - 1e-9;
+    let giro;
+    if (Math.abs(bd[0]) > 0.999999) giro = 'ninguno (v ∥ B)';
+    else if (Math.abs(bz) < 1e-6) giro = 'en un plano vertical';
+    else giro = (pt.q * bz > 0 ? 'horario ↻' : 'antihorario ↺') + (enPlano ? '' : ' (hélice)');
+    $('p-giro').textContent = giro;
+    const dev = +$('s-fe').value - 1;
+    const enRes = Math.abs(dev) <= 0.002;
+    $('estado').textContent = enRes ? (relat ? 'En resonancia al inyectar' : 'En resonancia') : 'Fuera de resonancia (' + (dev * 100).toFixed(2) + ' %)';
+    $('estado').style.color = enRes ? '#6fe39a' : '#ff8a65';
+    notas(bd, enPlano);
+    registrar(sim.state());
+    refrescar(sim.state());                       // muestra el estado inicial aunque el simulador esté en pausa
+  }
+  function refrescar(s) {                         // bola, panel y línea a la carga según el estado s
+    bola.position.set(s.x * S, s.y * S, s.z * S);
+    bola.material.color.copy(colorEnergia(s.K / kcol)).lerp(new THREE.Color(0xffffff), 0.4);
+    actualizarPanel(s);
+    actualizarCarga(s);
+  }
+  function notas(bd, enPlano) {
+    const n = [];
+    if (claveAct === 'electron') {
+      n.push('Electrón: ' + Math.round(CP.PARTICLES.proton.m / pt.m) + ' veces más ligero que el protón → f_c ≈ ' + (sim.fc / 1e9).toFixed(1) + ' GHz y gira al revés. ' +
+             'Con energías de MeV su masa relativista (γ) ya es varias veces la de reposo, f_c baja y se sale de resonancia: por eso no se acelera en un ciclotrón clásico. ' +
+             'Se inyecta a unos MeV porque a 1 keV su órbita (~0.1 mm) cabe dentro del hueco y nunca llega a las D.');
+      if (!relat) n.push('<span class="aviso">Con dinámica clásica el electrón supera la velocidad de la luz (v/c > 1): no es físico, solo sirve para comparar.</span>');
+    } else if (relat) {
+      n.push('Dinámica relativista: a ~12 MeV el protón tiene γ ≈ 1.013, f_c baja ≈ 1 % y se pierde la resonancia. Prueba bajar f_E / f_c a ~0.995 (idea del sincrociclotrón).');
+    }
+    if (!enPlano) n.push(Math.abs(bd[0]) > 0.999999 ? 'B paralelo a la velocidad inicial (+x): no hay fuerza magnética, la partícula sigue recta y solo la acelera E.'
+      : 'B no vertical: el movimiento deja de ser plano (hélice o círculo en un plano vertical). Si |z| supera la mitad de la altura de las D, la partícula choca con la tapa.');
+    $('nota').innerHTML = n.join('<br>');
+  }
+  function etiquetas() {
+    $('v-B').textContent = (+$('s-B').value).toFixed(2);
+    $('v-V').textContent = $('s-V').value;
+    $('v-fe').textContent = (+$('s-fe').value).toFixed(4);
+    $('v-phi').textContent = (+$('s-phi').value).toFixed(2);
+    $('v-vel').textContent = $('vel').value;
+    $('v-th').textContent = $('s-th').value;
+    $('v-ph').textContent = $('s-ph').value;
+    { const k = Math.pow(10, +$('s-K0').value); $('v-K0').textContent = k < 1000 ? (k < 10 ? k.toFixed(1) : Math.round(k)) + ' keV' : (k / 1000).toFixed(2) + ' MeV'; }
+    $('v-Q').textContent = $('s-Q').value;
+    colorCarga();
+  }
+  function registrar(s) {
+    if (nPts >= MAX_PTS) return;
+    const c = colorEnergia(s.K / kcol);
+    posArr.set([s.x * S, s.y * S, s.z * S], nPts * 3);
+    ext = Math.max(ext, Math.hypot(s.x * S, s.y * S, s.z * S));
+    colArr.set([c.r, c.g, c.b], nPts * 3);
+    nPts++;
+    estelaGeo.attributes.position.needsUpdate = true;
+    estelaGeo.attributes.color.needsUpdate = true;
+    estelaGeo.setDrawRange(0, nPts);
+  }
+  function actualizarPanel(s) {
+    $('p-K').textContent = fmtE(s.K);
+    $('p-r').textContent = fmtL(s.rCurv);
+    $('p-vueltas').textContent = s.turns.toFixed(1);
+    $('p-beta').textContent = s.beta.toFixed(4) + (s.beta > 1 ? '  ¡> c!' : '');
+    $('p-beta').style.color = s.beta > 1 ? '#ff8a65' : '';
+    $('p-gamma').textContent = relat ? s.gamma.toFixed(4) : '— (clásico)';
+    $('p-fc').textContent = fmtF(s.fcNow);
+  }
+
+  const K_COULOMB = 8.9875517923e9;
+  function colorCarga() {
+    const Q = +$('s-Q').value;
+    carga.material.color.set(Q > 0 ? 0xff5a5a : Q < 0 ? 0x5a8aff : 0x888888);
+  }
+  function actualizarCarga(s) {
+    if (!hayCarga) return;
+    const d = Math.hypot(s.x - qx, s.y - qy, s.z), Q = Qef();
+    $('p-dist').textContent = (d * 100).toFixed(1) + ' cm';
+    $('p-fq').textContent = Q === 0 ? '0 (Q = 0)' : (K_COULOMB * Math.abs(pt.q * Q) / (d * d)).toExponential(2) + ' N ' + (Q * pt.q > 0 ? '(repulsión)' : '(atracción)');
+    linea.geometry.setFromPoints([carga.position, bola.position]);
+  }
+  function avanzar() {
+    if (pausado || detenido || !sim) return;
+    tObjetivo += (+$('vel').value / 60) * Tc;       // vueltas por segundo -> tiempo simulado por frame
+    let s = sim.state(), n = 0;
+    while (s.t < tObjetivo && !s.exited && n++ < 20000) {
+      sim.step(); s = sim.state();
+      if (s.t - tUltimo >= Tc / PTS_POR_VUELTA) { registrar(s); tUltimo = s.t; }
+    }
+    bola.position.set(s.x * S, s.y * S, s.z * S);
+    bola.material.color.copy(colorEnergia(s.K / kcol)).lerp(new THREE.Color(0xffffff), 0.4);
+    // hueco: color y brillo según Ex
+    const f = Math.min(Math.abs(s.Ex) / (V / GAP), 1);
+    hueco.material.color.set(s.Ex >= 0 ? 0xff7a33 : 0x33c7ff);
+    hueco.material.opacity = 0.15 + 0.5 * f;
+    actualizarPanel(s);
+    actualizarCarga(s);
+    if (s.exited) {
+      registrar(s);
+      $('estado').textContent = s.exitInfo && s.exitInfo.porTapa ? 'La partícula chocó con la tapa de las D (se salió del plano)' : 'La partícula salió de las D';
+      $('estado').style.color = '#ffd166';
+    } else if (s.turns >= maxV || nPts >= MAX_PTS) {
+      detenido = true;
+      $('estado').textContent = 'No salió tras ' + Math.floor(s.turns) + ' vueltas (' + (claveAct === 'electron'
+        ? 'K entre ' + (s.K / K0).toFixed(2) + ' y ' + (s.Kmax / K0).toFixed(2) + ' × K₀, nunca se acelera'
+        : 'K = ' + (100 * s.K / kth).toFixed(0) + ' % de la teórica') + ')';
+      $('estado').style.color = '#ff8a65';
+    }
+  }
+
+  // ---------- UI ----------
+  const k0Defecto = () => { const el = $('sel').value === 'electron', enD = $('inj').value === 'dee'; return el ? 5000 : (enD ? 10 : 1); };   // keV (el electrón necesita ~MeV para que su órbita sea mayor que el hueco)
+  function ponerZoom(on) {
+    zoomAuto = on; $('b-zoom').textContent = 'Zoom automático: ' + (on ? 'sí' : 'no');
+    if (!on) { vista([0, -9, 9]); bola.scale.setScalar(1); flechas.scale.setScalar(1); }
+  }
+  $('sel').onchange = () => {                         // cada partícula arranca con su física y energía de inyección típicas
+    const el = $('sel').value === 'electron';
+    $('din').value = el ? 'rel' : 'clasica';
+    $('s-K0').value = Math.log10(k0Defecto());
+    ponerZoom(el);
+    iniciar($('sel').value);
+  };
+  $('inj').onchange = () => { $('s-K0').value = Math.log10(k0Defecto()); iniciar($('sel').value); };
+  $('bdir').onchange = () => { $('grupoB').style.display = $('bdir').value === 'custom' ? 'block' : 'none'; iniciar($('sel').value); };
+  $('b-zoom').onclick = () => ponerZoom(!zoomAuto);
+  ['modo', 'din'].forEach((id) => { $(id).onchange = () => iniciar($('sel').value); });
+  ['s-B', 's-V', 's-fe', 's-phi', 's-th', 's-ph', 's-K0'].forEach((id) => {
+    $(id).oninput = etiquetas;                         // mientras arrastras: solo el número
+    $(id).onchange = () => iniciar($('sel').value);    // al soltar: reinicia con los nuevos valores
+  });
+  $('vel').oninput = etiquetas;
+  $('s-Q').oninput = () => { etiquetas(); if (sim) { sim.setExternal(Qef(), qx, qy); actualizarCarga(sim.state()); } };
+  $('b-carga').onclick = () => {
+    hayCarga = !hayCarga;
+    if (hayCarga) { qx = 0.75; qy = 0; carga.position.set(qx * S, qy * S, 0); if (+$('s-Q').value === 0) $('s-Q').value = 300; etiquetas(); }
+    carga.visible = linea.visible = hayCarga;
+    ['grupoCarga', 'filasCarga', 'ayudaCarga'].forEach((id) => { $(id).style.display = hayCarga ? 'block' : 'none'; });
+    $('b-carga').textContent = hayCarga ? 'Quitar carga externa' : 'Agregar carga externa';
+    if (sim) { sim.setExternal(Qef(), qx, qy); sim.setShield($('blind').value === 'si'); actualizarCarga(sim.state()); }   // en vivo, sin reiniciar
+  };
+  $('blind').onchange = () => { if (sim) sim.setShield($('blind').value === 'si'); };   // en vivo, sin reiniciar
+  // arrastrar la carga con el mouse sobre el plano z = 0
+  const ray = new THREE.Raycaster(), ptr = new THREE.Vector2(), plano = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0), hit = new THREE.Vector3();
+  let arrastrando = false;
+  function apuntar(ev) {
+    const r = renderer.domElement.getBoundingClientRect();
+    ptr.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ptr, camera);
+  }
+  renderer.domElement.addEventListener('pointerdown', (ev) => {
+    apuntar(ev);
+    if (hayCarga && ray.intersectObject(carga).length) { arrastrando = true; controls.enabled = false; renderer.domElement.setPointerCapture(ev.pointerId); }
+  });
+  renderer.domElement.addEventListener('pointermove', (ev) => {
+    if (!arrastrando) return;
+    apuntar(ev);
+    if (ray.ray.intersectPlane(plano, hit)) {
+      qx = Math.max(-1.5, Math.min(1.5, hit.x / S)); qy = Math.max(-1.5, Math.min(1.5, hit.y / S));
+      carga.position.set(qx * S, qy * S, 0);
+      if (sim) { sim.setExternal(Qef(), qx, qy); actualizarCarga(sim.state()); }   // refresca aunque esté en pausa
+    }
+  });
+  addEventListener('pointerup', () => { if (arrastrando) { arrastrando = false; controls.enabled = true; } });
+  $('b-reset').onclick = () => iniciar($('sel').value);
+  $('b-pausa').onclick = (ev) => { pausado = !pausado; ev.target.textContent = pausado ? 'Reanudar' : 'Pausa'; };
+  $('b-top').onclick = () => vista([0, 0, 16]);
+  $('b-lado').onclick = () => vista([0, -16, 2]);
+  $('b-bloom').onclick = (ev) => { usarBloom = !usarBloom; ev.target.textContent = 'Brillo: ' + (usarBloom ? 'sí' : 'no'); };
+  $('b-sigue').onclick = (ev) => { siguiendo = !siguiendo; ev.target.textContent = 'Seguir partícula: ' + (siguiendo ? 'sí' : 'no'); if (!siguiendo) controls.target.set(0, 0, 0); };
+  addEventListener('resize', () => {
+    renderer.setSize(innerWidth, innerHeight);
+    composer.setSize(innerWidth, innerHeight);
+    camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  });
+
+  iniciar('proton');
+  (function loop() {
+    requestAnimationFrame(loop);
+    avanzar();
+    if (siguiendo) controls.target.lerp(bola.position, 0.15);
+    if (zoomAuto) {                                   // acerca/aleja la cámara según el tamaño de la trayectoria
+      const dir = camera.position.clone().sub(controls.target), d = dir.length();
+      const quiero = Math.min(25, Math.max(0.35, 2.6 * ext + 0.3));
+      camera.position.copy(controls.target).add(dir.setLength(d + (quiero - d) * 0.08));
+    }
+    { const d = camera.position.distanceTo(controls.target); const k = Math.min(1, Math.max(0.02, d / 9)); bola.scale.setScalar(k); flechas.scale.setScalar(k); }   // bola y flechas de B se achican al acercar, para no tapar órbitas pequeñas
+    controls.update();
+    if (usarBloom) composer.render(); else renderer.render(scene, camera);
+  })();
+})();
+</script>
+</body>
+</html>

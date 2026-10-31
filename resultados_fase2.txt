@@ -1,0 +1,75 @@
+Configuración: B = 1 T, V = 50 kV, hueco = 1 cm, R = 0.5 m, K0 = 1 keV, modo ideal, f_E = f_c
+
+=== V0: el ciclotrón con V = 0 reproduce la fase 1 (2000 pasos) ===
+Diferencia máxima de posición: 0.00e+0 (relativa al radio)
+
+=== V3: ganancia de energía por cruce del hueco (protón) ===
+Cruce #  | ΔK / qV
+      1  | 1.0015
+      2  | 1.0005
+      3  | 1.0004
+      4  | 1.0014
+      5  | 0.9971
+      6  | 1.0055
+Cruces 7 a 239: media 1.0001, mín 0.9585, máx 1.0424
+Rebotes (entra y vuelve al mismo lado): 0
+
+=== V4: energía vs. número de cruces (ajuste lineal) ===
+Pendiente: 0.99991 qV por cruce (teoría: 1)   R² = 0.99999984
+Ordenada: 25.93 keV (teoría K0 + qV/2 = 26.00 keV)
+Relación K = 2·N·qV: N = 119.5 vueltas → 2NqV = 11.950 MeV, K simulada = 11.977 MeV
+
+=== V5: energía final vs. K = q²B²R²/(2m) ===
+Partícula        | K simulada (MeV) | K teórica (MeV) | error   | vueltas | f_c (MHz)
+Protón           |           11.977 |          11.974 |  0.03 % |   119.5 | 15.245
+Deuterón         |            5.983 |           5.990 | -0.11 % |    59.5 | 7.626
+Partícula alfa   |           12.064 |          12.056 |  0.06 % |      60 | 7.675
+Nota: K simulada es la energía de la última semicircunferencia, así que puede diferir ~0,4 % por cuantización (ΔK por cruce / K).
+
+=== V6: barrido de frecuencia (protón, hasta 300 vueltas) ===
+f_E / f_c | sale | K máx alcanzada / K teórica | vueltas
+    0.950 | no   |                       8.3 % | 294.5
+    0.980 | no   |                      18.5 % | 294
+    0.990 | no   |                      30.7 % | 297
+    0.995 | no   |                      67.4 % | 298.5
+    0.998 | sí   |                     100.0 % | 119.5
+    0.999 | sí   |                     100.0 % | 119.5
+    1.000 | sí   |                     100.0 % | 119.5
+    1.001 | sí   |                     100.0 % | 119.5
+    1.002 | no   |                      96.6 % | 299
+    1.005 | no   |                      70.1 % | 298.5
+    1.010 | no   |                      34.0 % | 296.5
+    1.020 | no   |                      19.6 % | 297
+    1.050 | no   |                       7.6 % | 283.5
+La resonancia es estrecha: la fase se desliza 2π·(f_E − f_c)·t, y con ~120 vueltas (7,6 µs) basta un desajuste de ~0,2 % para perderla.
+
+=== V7: barrido de la fase φ, partícula inyectada en la D (10 keV, f_E = f_c, hasta 300 vueltas) ===
+φ        | ideal: sale | rebotes | ideal: K final / K teór. | sinus.: sale | sinus.: K final / K teór. | sinus.: vueltas
+0.000 π  | sí          |       0 |                  93.6 % | no           |                   75.8 % | 299.5
+0.125 π  | sí          |       0 |                  99.9 % | sí           |                   91.8 % | 215.5
+0.250 π  | sí          |       0 |                  99.9 % | sí           |                   96.0 % | 147.5
+0.375 π  | sí          |       0 |                  99.9 % | sí           |                   98.5 % | 123.5
+0.500 π  | sí          |       0 |                  99.9 % | sí           |                   99.8 % | 120
+0.625 π  | sí          |       0 |                  99.9 % | sí           |                   96.8 % | 129
+0.750 π  | sí          |       0 |                  99.9 % | sí           |                   91.2 % | 158
+0.875 π  | sí          |       0 |                  99.4 % | sí           |                   84.3 % | 177
+1.000 π  | sí          |       1 |                  89.5 % | sí           |                   86.9 % | 109
+1.125 π  | sí          |       1 |                  89.5 % | sí           |                   88.6 % | 110
+1.250 π  | sí          |       1 |                  89.5 % | sí           |                   88.3 % | 106
+1.375 π  | sí          |       1 |                  89.5 % | sí           |                   87.7 % | 108
+1.500 π  | sí          |       1 |                  89.5 % | sí           |                   84.2 % | 123
+1.625 π  | sí          |       1 |                  89.5 % | sí           |                   77.0 % | 153
+1.750 π  | sí          |       1 |                  78.1 % | sí           |                   95.2 % | 173.5
+1.875 π  | sí          |       0 |                  98.4 % | sí           |                   92.1 % | 163.5
+Convención: E_x = (V/g)·s(t), s = sign(sen(2πft+φ)) (ideal) o sen(2πft+φ) (sinusoidal). La partícula llega al hueco con E_x < 0 si φ ∈ (0, π).
+φ ∈ (0, π): gana energía desde el primer cruce (0 rebotes). φ ∈ (π, 2π): el campo la frena y la rebota en el primer cruce; el retraso de media
+vuelta la deja de nuevo en fase y termina saliendo (autocorrección). Sale con K algo menor (~89 %) porque el punto de inyección queda descentrado.
+En sinusoidal la ganancia por cruce es ~qV·sen(φ): las vueltas necesarias son mínimas en φ = π/2 y crecen hacia los bordes.
+
+--- Contraste: inyección en el CENTRO del hueco (modo ideal, y0 recalibrado para cada φ) ---
+φ        | sale | K final / K teórica
+0.25 π   | sí   | 100.03 %
+0.50 π   | sí   | 100.03 %
+1.25 π   | sí   | 99.96 %
+1.50 π   | sí   | 99.96 %
+Con inyección central, el primer empujón decide hacia qué D va la partícula: se autosincroniza y φ casi no importa.

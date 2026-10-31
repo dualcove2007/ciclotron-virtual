@@ -1,0 +1,55 @@
+=== R1: electrón de 1 MeV en B = 1 T, dinámica relativista (V = 0) ===
+  [OK   ] radio = p/(eB)  →  simulado 4.7432 mm, teoría 4.7432 mm (clásico daría 1.70 mm con v = c)
+  [OK   ] ω = eB/(γm)  →  γ = 2.9570; ω simulada 5.9481e+10, teoría 5.9481e+10 rad/s
+  [OK   ] v < c siempre  →  β = 0.94108
+
+=== R2: sentido de giro con B hacia +z (visto desde arriba) ===
+  [OK   ] protón gira en sentido horario  →  Δ(ángulo de v) = -1.257 rad
+  [OK   ] electrón gira en sentido antihorario  →  Δ(ángulo de v) = 0.425 rad
+
+=== R3: límite clásico (protón de 1 keV, 3 vueltas): relativista ≈ clásico ===
+  [OK   ] trayectorias casi idénticas  →  diferencia máx = 2.01e-5 × radio
+
+=== R4: conservación de la energía con V = 0 (electrón 1 MeV, 20 vueltas, relativista) ===
+  [OK   ] K constante  →  desviación máx 3.09e-14
+
+=== B1: B hacia −z es el reflejo de B hacia +z (protón de 100 keV, V = 0) ===
+  [OK   ] x igual, y con signo opuesto  →  diferencia 0.00e+0 × radio
+
+=== B2: B paralelo a la velocidad (B hacia +x): sin fuerza magnética ===
+  [OK   ] velocidad constante  →  vy = 0.0e+0, vz = 0.0e+0
+  [OK   ] trayectoria recta  →  y = 0.0e+0, z = 0.0e+0
+
+=== B3: B hacia +y, v hacia +x: círculo en el plano xz ===
+  [OK   ] diámetro en z = 2r  →  91.391 mm vs 91.388 mm
+  [OK   ] diámetro en x = 2r
+  [OK   ] nunca sale del plano xz  →  |y| máx = 0.0e+0
+
+=== B4: B inclinado θ = 30° desde +z (azimut 0): hélice ===
+  [OK   ] v∥ constante  →  v∥/v = 0.50000 (teoría 0.50000)
+  [OK   ] K constante
+  [OK   ] radio de la hélice = m·v⊥/(qB)  →  39.5721 mm vs 39.5721 mm
+  [OK   ] avance a lo largo de B = v∥·t  →  430.655 mm vs 430.655 mm
+
+=== E1: electrón de 1 keV en el ciclotrón (hueco de 1 cm): no llega a las D ===
+  [OK   ] 0 cruces completos entre D en 300 vueltas  →  K máx 51.7 keV; radio de giro a esa energía 0.79 mm < medio hueco (5 mm)
+
+=== E2: electrón inyectado a 2 y 5 MeV (f_E = f_c/γ₀): oscila y nunca se acelera ===
+  [OK   ] K₀ = 2 MeV, V = 50 kV: no sale y K máx < 1.5·K₀  →  vueltas 299.5, K máx = 1.17 × K₀ (K máx teórica 149 MeV)
+  [OK   ] K₀ = 2 MeV, V = 100 kV: no sale y K máx < 1.5·K₀  →  vueltas 299.5, K máx = 1.25 × K₀ (K máx teórica 149 MeV)
+  [OK   ] K₀ = 5 MeV, V = 50 kV: no sale y K máx < 1.5·K₀  →  vueltas 299.5, K máx = 1.11 × K₀ (K máx teórica 149 MeV)
+  [OK   ] K₀ = 5 MeV, V = 100 kV: no sale y K máx < 1.5·K₀  →  vueltas 299, K máx = 1.15 × K₀ (K máx teórica 149 MeV)
+
+=== E3: electrón de 10 MeV, signo de ΔK en el primer cruce: φ = π/2 acelera, φ = 3π/2 frena ===
+  [OK   ] φ = π/2: ΔK > 0 (≈ +qV)  →  ΔK = 1.002 qV
+  [OK   ] φ = 3π/2: ΔK < 0 (≈ −qV)  →  ΔK = -1.002 qV
+
+=== P1: protón relativista (V = 50 kV, 400 vueltas) ===
+  [OK   ] clásico, f_E = f_c: sale (referencia)  →  K = 11.98 MeV
+  [OK   ] relativista, f_E = f_c: se atasca  →  K máx 7.89 MeV
+  [OK   ] relativista, f_E = 0.995 f_c: sale  →  K = 11.92 MeV, 119.5 vueltas
+
+=== Ciclotrón con B hacia −z (protón, V = 50 kV): mismo resultado que +z ===
+  [OK   ] sale con la misma energía y vueltas  →  +z: 11.977 MeV / 119.5 v.   −z: 11.977 MeV / 119.5 v.
+
+Todas las comprobaciones pasaron
